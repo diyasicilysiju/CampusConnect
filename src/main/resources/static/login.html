@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - CampusConnect</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="brand-logo">
+                <div class="brand-icon">🎓</div>
+                <span>CampusConnect</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/index.html" class="nav-link">Home</a></li>
+                <li><a href="/events.html" class="nav-link">Browse Events</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="/register.html" class="btn btn-primary btn-sm">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Login Form Card -->
+    <main class="container">
+        <div class="auth-wrapper">
+            <div class="auth-header">
+                <h1>Welcome Back</h1>
+                <p>Sign in to access your event dashboard</p>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="validationMessage" class="alert alert-warning"></div>
+            <div id="errorMessage" class="alert alert-error"></div>
+            <div id="successMessage" class="alert alert-success"></div>
+
+            <form id="loginForm" novalidate onsubmit="event.preventDefault(); handleLogin(event); return false;">
+                <div class="form-group">
+                    <label for="email">University Email Address</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="e.g. john.doe@campusconnect.edu" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+
+                <button type="button" id="loginButton" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="handleLogin(event)">
+                    Sign In
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.5rem; font-size: 0.92rem; color: var(--text-muted);">
+                Don't have an account? <a href="/register.html" id="registerLink" style="color: var(--primary-indigo); font-weight: 600;">Register as Student</a>
+            </div>
+
+            <div style="margin-top: 2rem; padding-top: 1.25rem; border-top: 1px dashed var(--card-border); font-size: 0.82rem; color: var(--text-muted);">
+                <strong>Demo Credentials:</strong><br>
+                Admin: <code>admin@campusconnect.edu</code> / <code>Admin@123</code><br>
+                Student: <code>john.doe@campusconnect.edu</code> / <code>Student@123</code>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/main.js"></script>
+    <script>
+        async function handleLogin(e) {
+            e.preventDefault();
+            CC.clearAllAlerts();
+
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            // Required-field and email format validation
+            if (!email || !password) {
+                CC.showAlert('validationMessage', 'Please fill in both email and password fields.', 'warning');
+                return false;
+            }
+
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(email)) {
+                CC.showAlert('validationMessage', 'Please enter a valid email address.', 'warning');
+                return false;
+            }
+
+            const btn = document.getElementById('loginButton');
+            btn.disabled = true;
+            btn.textContent = 'Signing In...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    CC.showAlert('successMessage', 'Login successful! Redirecting...', 'success');
+                    const user = data.data;
+
+                    // Redirect appropriately
+                    setTimeout(() => {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirect = urlParams.get('redirect');
+
+                        if (redirect && redirect.length > 1) {
+                            window.location.href = redirect;
+                        } else if (user.role === 'ADMIN') {
+                            window.location.href = '/admin-dashboard.html';
+                        } else {
+                            window.location.href = '/events.html';
+                        }
+                    }, 500);
+                } else {
+                    CC.showAlert('errorMessage', data.message || 'Invalid email or password.', 'error');
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Network error occurred. Please try again.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+            }
+
+            return false;
+        }
+    </script>
+</body>
+</html>

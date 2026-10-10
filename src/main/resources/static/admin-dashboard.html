@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - CampusConnect</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="brand-logo">
+                <div class="brand-icon">🎓</div>
+                <span>CampusConnect</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/index.html" class="nav-link">Home</a></li>
+                <li><a href="/events.html" class="nav-link">Browse Events</a></li>
+                <li><a href="/admin-dashboard.html" class="nav-link active">Admin Dashboard</a></li>
+            </ul>
+            <div class="nav-actions" id="navAuth">
+                <!-- Injected via auth.js -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Top Title & Action -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+            <div>
+                <h1 style="font-size: 2rem; color: var(--primary-navy); font-weight: 700;">Admin Management Portal</h1>
+                <p style="color: var(--text-muted); font-size: 1rem;">Campus events overview, capacity tracking, and student attendance.</p>
+            </div>
+            <div>
+                <a href="/event-form.html" class="btn btn-indigo" id="createEventButton">
+                    ➕ Create New Event
+                </a>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="successMessage" class="alert alert-success"></div>
+        <div id="errorMessage" class="alert alert-error"></div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: #e0f2fe; color: #0284c7;">📅</div>
+                <div class="stat-info">
+                    <h3>Total Events</h3>
+                    <div id="totalEventsStat" class="stat-number">0</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: #f3e8ff; color: #7e22ce;">👨‍🎓</div>
+                <div class="stat-info">
+                    <h3>Registered Students</h3>
+                    <div id="totalStudentsStat" class="stat-number">0</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: #dcfce7; color: #15803d;">🎟️</div>
+                <div class="stat-info">
+                    <h3>Total Registrations</h3>
+                    <div id="totalRegistrationsStat" class="stat-number">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Events Section -->
+        <div style="background: white; border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                <h2 style="font-size: 1.35rem; color: var(--primary-navy); font-weight: 700;">Manage Events</h2>
+                <div style="max-width: 320px; width: 100%;">
+                    <input type="text" id="adminSearchInput" class="form-control" placeholder="Search events in table..." oninput="filterAdminEvents()">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="table" id="adminEventsTable">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Date & Time</th>
+                            <th>Venue</th>
+                            <th>Capacity / Registered</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminEventsTableBody">
+                        <!-- Dynamic event rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Students Registrations Modal -->
+    <div id="studentsModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 750px;">
+            <div class="modal-header">
+                <h3 id="modalEventTitle" style="font-size: 1.25rem; font-weight: 700; color: var(--primary-navy);">Registered Students</h3>
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeStudentsModal()" style="border: none; font-size: 1.2rem;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="studentsLoading" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading student list...</div>
+                <div id="noStudentsMsg" style="display: none; text-align: center; padding: 2rem; color: var(--text-muted);">No students have registered for this event yet.</div>
+                <div id="studentsTableWrapper" class="table-container" style="display: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Student ID</th>
+                                <th>Email</th>
+                                <th>Registration Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeStudentsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--error-red);">Confirm Event Deletion</h3>
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeDeleteModal()" style="border: none; font-size: 1.2rem;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete this event?</p>
+                <p id="deleteEventTitle" style="font-weight: 700; color: var(--primary-navy); margin: 0.5rem 0;"></p>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">All associated student registrations will also be removed. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton" onclick="executeDeleteEvent()">Delete Event</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>CampusConnect</h3>
+                <p>College Event Management Portal</p>
+            </div>
+            <div class="footer-contact">
+                <h4>Admin Support</h4>
+                <p>admin@campusconnect.edu</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 CampusConnect Portal</p>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        let adminEvents = [];
+        let pendingDeleteId = null;
+
+        async function initDashboard() {
+            CC.clearAllAlerts();
+            // Scenario 28: Protect admin-only page from student or anonymous access
+            const user = await Auth.requireAuth('ADMIN');
+            if (!user) return;
+
+            loadStats();
+            loadAdminEvents();
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/dashboard/stats');
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    document.getElementById('totalEventsStat').textContent = data.data.totalEvents;
+                    document.getElementById('totalStudentsStat').textContent = data.data.totalStudents;
+                    document.getElementById('totalRegistrationsStat').textContent = data.data.totalRegistrations;
+                }
+            } catch (err) {
+                console.error('Failed to load stats:', err);
+            }
+        }
+
+        async function loadAdminEvents() {
+            try {
+                const res = await fetch('/api/events');
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    adminEvents = data.data || [];
+                    renderAdminEvents(adminEvents);
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Failed to load events table.', 'error');
+            }
+        }
+
+        function renderAdminEvents(events) {
+            const tbody = document.getElementById('adminEventsTableBody');
+            if (!events || events.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">No events found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = events.map(e => `
+                <tr data-event-id="${e.id}">
+                    <td>
+                        <strong style="color:var(--primary-navy);">${e.title}</strong><br>
+                        <small style="color:var(--text-muted);">${e.organizer}</small>
+                    </td>
+                    <td><span class="event-badge ${CC.getCategoryBadgeClass(e.category)}">${e.category}</span></td>
+                    <td>${CC.formatDate(e.eventDate)}<br><small style="color:var(--text-muted);">${CC.formatTime(e.startTime)}</small></td>
+                    <td>${e.venue}</td>
+                    <td>
+                        <strong>${e.registeredCount} / ${e.capacity}</strong>
+                        <span style="font-size:0.8rem; color:${e.isFull ? 'var(--error-red)' : 'var(--success-green)'};">
+                            (${e.availableSeats} open)
+                        </span>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button type="button" class="btn btn-outline btn-sm view-reg-btn" onclick="openStudentsModal(${e.id}, '${e.title.replace(/'/g, "\\'")}')" title="View Registered Students">
+                            👥 Students (${e.registeredCount})
+                        </button>
+                        <a href="/event-form.html?id=${e.id}" class="btn btn-outline btn-sm edit-event-btn" title="Edit Event" style="margin-left:0.35rem;">
+                            ✏️ Edit
+                        </a>
+                        <button type="button" class="btn btn-danger btn-sm delete-event-btn" onclick="openDeleteModal(${e.id}, '${e.title.replace(/'/g, "\\'")}')" title="Delete Event" style="margin-left:0.35rem;">
+                            🗑️ Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterAdminEvents() {
+            const q = document.getElementById('adminSearchInput').value.toLowerCase().trim();
+            const filtered = adminEvents.filter(e =>
+                e.title.toLowerCase().includes(q) ||
+                e.category.toLowerCase().includes(q) ||
+                e.venue.toLowerCase().includes(q) ||
+                e.organizer.toLowerCase().includes(q)
+            );
+            renderAdminEvents(filtered);
+        }
+
+        async function openStudentsModal(eventId, eventTitle) {
+            document.getElementById('modalEventTitle').textContent = `Registered Students - ${eventTitle}`;
+            document.getElementById('studentsLoading').style.display = 'block';
+            document.getElementById('noStudentsMsg').style.display = 'none';
+            document.getElementById('studentsTableWrapper').style.display = 'none';
+            document.getElementById('studentsModal').classList.add('active');
+
+            try {
+                const res = await fetch(`/api/registrations/event/${eventId}/students`);
+                const data = await res.json();
+                document.getElementById('studentsLoading').style.display = 'none';
+
+                if (res.ok && data.success) {
+                    const students = data.data || [];
+                    if (students.length === 0) {
+                        document.getElementById('noStudentsMsg').style.display = 'block';
+                    } else {
+                        document.getElementById('studentsTableWrapper').style.display = 'block';
+                        document.getElementById('studentsTableBody').innerHTML = students.map(s => `
+                            <tr>
+                                <td><strong>${s.studentName}</strong></td>
+                                <td><code>${s.studentId || '-'}</code></td>
+                                <td>${s.studentEmail}</td>
+                                <td style="font-size:0.85rem;">${s.registrationDate}</td>
+                                <td>
+                                    <span class="badge" style="background:${s.status === 'REGISTERED' ? '#ecfdf5' : '#fef2f2'}; color:${s.status === 'REGISTERED' ? '#15803d' : '#b91c1c'}; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; font-weight:600;">
+                                        ${s.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                document.getElementById('studentsLoading').style.display = 'none';
+                document.getElementById('noStudentsMsg').textContent = 'Error loading student registrations.';
+                document.getElementById('noStudentsMsg').style.display = 'block';
+            }
+        }
+
+        function closeStudentsModal() {
+            document.getElementById('studentsModal').classList.remove('active');
+        }
+
+        function openDeleteModal(eventId, title) {
+            pendingDeleteId = eventId;
+            document.getElementById('deleteEventTitle').textContent = title;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            pendingDeleteId = null;
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        async function executeDeleteEvent() {
+            if (!pendingDeleteId) return;
+
+            const id = pendingDeleteId;
+            closeDeleteModal();
+            CC.clearAllAlerts();
+
+            try {
+                const res = await fetch(`/api/events/${id}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    CC.showAlert('successMessage', 'Event successfully deleted.', 'success');
+                    await loadStats();
+                    await loadAdminEvents();
+                } else {
+                    CC.showAlert('errorMessage', data.message || 'Failed to delete event.', 'error');
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Network error during event deletion.', 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDashboard();
+        });
+    </script>
+</body>
+</html>

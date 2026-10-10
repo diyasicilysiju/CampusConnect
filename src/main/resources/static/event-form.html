@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Event - CampusConnect</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="brand-logo">
+                <div class="brand-icon">🎓</div>
+                <span>CampusConnect</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/index.html" class="nav-link">Home</a></li>
+                <li><a href="/events.html" class="nav-link">Browse Events</a></li>
+                <li><a href="/admin-dashboard.html" class="nav-link">Admin Dashboard</a></li>
+            </ul>
+            <div class="nav-actions" id="navAuth">
+                <!-- Injected via auth.js -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div class="auth-wrapper" style="max-width: 680px; margin: 2rem auto;">
+            <div class="auth-header">
+                <h1 id="formHeading">Create New Event</h1>
+                <p id="formSubheading">Publish a new university activity or workshop for students</p>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="validationMessage" class="alert alert-warning"></div>
+            <div id="errorMessage" class="alert alert-error"></div>
+            <div id="successMessage" class="alert alert-success"></div>
+
+            <form id="eventForm" novalidate onsubmit="event.preventDefault(); handleSaveEvent(event); return false;">
+                <div class="form-group">
+                    <label for="eventTitle">Event Title *</label>
+                    <input type="text" id="eventTitle" name="eventTitle" class="form-control" placeholder="e.g. Hackathon 2026" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="eventCategory">Category *</label>
+                    <select id="eventCategory" name="eventCategory" class="form-control" required>
+                        <option value="">Select Category</option>
+                        <option value="Technical">Technical</option>
+                        <option value="Cultural">Cultural</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Workshops">Workshops</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="eventDescription">Description *</label>
+                    <textarea id="eventDescription" name="eventDescription" class="form-control" rows="4" placeholder="Provide detailed information regarding schedules, prerequisites, and activities..." required></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="eventDate">Event Date *</label>
+                        <input type="date" id="eventDate" name="eventDate" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="eventTime">Start Time *</label>
+                        <input type="time" id="eventTime" name="eventTime" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="eventVenue">Venue Location *</label>
+                    <input type="text" id="eventVenue" name="eventVenue" class="form-control" placeholder="e.g. Main Auditorium / Tech Lab 3" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="eventOrganizer">Organizer / Department *</label>
+                        <input type="text" id="eventOrganizer" name="eventOrganizer" class="form-control" placeholder="e.g. Dept of CS / Music Club" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="eventCapacity">Maximum Capacity *</label>
+                        <input type="number" id="eventCapacity" name="eventCapacity" class="form-control" min="1" placeholder="e.g. 100" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="eventImageUrl">Event Image URL (Optional)</label>
+                    <input type="url" id="eventImageUrl" name="eventImageUrl" class="form-control" placeholder="https://images.unsplash.com/...">
+                    <small class="form-text">Paste a web image link or leave blank for default image.</small>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <a href="/admin-dashboard.html" class="btn btn-outline" id="cancelButton" style="flex: 1;">Cancel</a>
+                    <button type="button" class="btn btn-indigo" id="saveEventButton" style="flex: 2;" onclick="handleSaveEvent(event)">Save Event</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>CampusConnect</h3>
+                <p>College Event Management Portal</p>
+            </div>
+            <div class="footer-contact">
+                <h4>Support</h4>
+                <p>admin@campusconnect.edu</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 CampusConnect Portal</p>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        let isEditMode = false;
+        let eventId = null;
+
+        async function initForm() {
+            CC.clearAllAlerts();
+            const user = await Auth.requireAuth('ADMIN');
+            if (!user) return;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            eventId = urlParams.get('id');
+
+            if (eventId) {
+                isEditMode = true;
+                document.getElementById('formHeading').textContent = 'Edit Event';
+                document.getElementById('formSubheading').textContent = 'Update event schedules, venue, or capacity';
+                document.getElementById('saveEventButton').textContent = 'Update Event';
+                loadEventForEdit(eventId);
+            }
+        }
+
+        async function loadEventForEdit(id) {
+            try {
+                const res = await fetch(`/api/events/${id}`);
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    const e = data.data;
+                    document.getElementById('eventTitle').value = e.title;
+                    document.getElementById('eventCategory').value = e.category;
+                    document.getElementById('eventDescription').value = e.description;
+                    document.getElementById('eventDate').value = e.eventDate;
+                    document.getElementById('eventTime').value = e.startTime.substring(0, 5);
+                    document.getElementById('eventVenue').value = e.venue;
+                    document.getElementById('eventOrganizer').value = e.organizer;
+                    document.getElementById('eventCapacity').value = e.capacity;
+                    document.getElementById('eventImageUrl').value = e.imageUrl || '';
+                } else {
+                    CC.showAlert('errorMessage', data.message || 'Failed to load event for editing.', 'error');
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Failed to retrieve event data.', 'error');
+            }
+        }
+
+        async function handleSaveEvent(e) {
+            e.preventDefault();
+            CC.clearAllAlerts();
+
+            const title = document.getElementById('eventTitle').value.trim();
+            const category = document.getElementById('eventCategory').value.trim();
+            const description = document.getElementById('eventDescription').value.trim();
+            const eventDate = document.getElementById('eventDate').value;
+            const startTime = document.getElementById('eventTime').value;
+            const venue = document.getElementById('eventVenue').value.trim();
+            const organizer = document.getElementById('eventOrganizer').value.trim();
+            const capacityStr = document.getElementById('eventCapacity').value;
+            const imageUrl = document.getElementById('eventImageUrl').value.trim();
+
+            // Scenario 23: Validation of event form with missing fields
+            if (!title || !category || !description || !eventDate || !startTime || !venue || !organizer || !capacityStr) {
+                CC.showAlert('validationMessage', 'All required fields marked with * must be filled in.', 'warning');
+                return false;
+            }
+
+            // Scenario 24: Reject invalid event capacity
+            const capacity = parseInt(capacityStr, 10);
+            if (isNaN(capacity) || capacity <= 0) {
+                CC.showAlert('validationMessage', 'Event capacity must be a positive integer greater than zero.', 'warning');
+                return false;
+            }
+
+            // Past date validation
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (eventDate < todayStr) {
+                CC.showAlert('validationMessage', 'Event date cannot be in the past. Please select a valid future date.', 'warning');
+                return false;
+            }
+
+            const payload = {
+                title,
+                category,
+                description,
+                eventDate,
+                startTime: startTime.length === 5 ? startTime + ':00' : startTime,
+                venue,
+                organizer,
+                capacity,
+                imageUrl: imageUrl || null
+            };
+
+            const btn = document.getElementById('saveEventButton');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            try {
+                const url = isEditMode ? `/api/events/${eventId}` : '/api/events';
+                const method = isEditMode ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    CC.showAlert('successMessage', isEditMode ? 'Event updated successfully!' : 'Event created successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/admin-dashboard.html';
+                    }, 1000);
+                } else {
+                    CC.showAlert('errorMessage', data.message || 'Operation failed.', 'error');
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Failed to communicate with server.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = isEditMode ? 'Update Event' : 'Save Event';
+            }
+
+            return false;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initForm();
+        });
+    </script>
+</body>
+</html>

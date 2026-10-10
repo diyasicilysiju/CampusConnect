@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Details - CampusConnect</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="brand-logo">
+                <div class="brand-icon">🎓</div>
+                <span>CampusConnect</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/index.html" class="nav-link">Home</a></li>
+                <li><a href="/events.html" class="nav-link">Browse Events</a></li>
+            </ul>
+            <div class="nav-actions" id="navAuth">
+                <a href="/login.html" class="btn btn-outline btn-sm">Login</a>
+                <a href="/register.html" class="btn btn-primary btn-sm">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div style="margin-bottom: 1.5rem;">
+            <a href="/events.html" class="btn btn-outline btn-sm" id="backToEventsBtn">&larr; Back to Events</a>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="successMessage" class="alert alert-success"></div>
+        <div id="errorMessage" class="alert alert-error"></div>
+        <div id="validationMessage" class="alert alert-warning"></div>
+
+        <div id="eventDetailsCard" class="card" style="background: white; border: 1px solid var(--card-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: none;">
+            <img id="detailImage" src="" alt="Event Image" style="width: 100%; height: 320px; object-fit: cover;">
+            
+            <div style="padding: 2.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+                    <div>
+                        <span id="detailCategory" class="event-badge badge-technical">Technical</span>
+                        <h1 id="detailTitle" style="font-size: 2.2rem; color: var(--primary-navy); font-weight: 800; margin-top: 0.5rem; line-height: 1.2;"></h1>
+                    </div>
+                    <div id="seatStatusContainer" style="text-align: right;">
+                        <div id="detailSeatCount" style="font-size: 1.15rem; font-weight: 700; color: var(--success-green);"></div>
+                        <div id="detailCapacity" style="font-size: 0.85rem; color: var(--text-muted);"></div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 2rem;">
+                    <div>
+                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Date</span>
+                        <p id="detailDate" style="font-weight: 600; color: var(--text-main); margin-top: 0.2rem;">-</p>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Start Time</span>
+                        <p id="detailTime" style="font-weight: 600; color: var(--text-main); margin-top: 0.2rem;">-</p>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Venue Location</span>
+                        <p id="detailVenue" style="font-weight: 600; color: var(--text-main); margin-top: 0.2rem;">-</p>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Organized By</span>
+                        <p id="detailOrganizer" style="font-weight: 600; color: var(--text-main); margin-top: 0.2rem;">-</p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 2.5rem;">
+                    <h3 style="font-size: 1.2rem; color: var(--primary-navy); margin-bottom: 0.75rem;">About this Event</h3>
+                    <p id="detailDescription" style="color: #475569; font-size: 1.05rem; line-height: 1.7; white-space: pre-line;"></p>
+                </div>
+
+                <!-- Registration Actions Section -->
+                <div style="border-top: 1px solid var(--card-border); padding-top: 1.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                    <div id="registrationNotice" style="font-size: 0.95rem; color: var(--text-muted);">
+                        Free entry for all registered university students.
+                    </div>
+                    <div id="actionButtonWrapper">
+                        <button type="button" id="eventRegisterButton" class="btn btn-indigo btn-lg" onclick="registerForCurrentEvent()">
+                            Register for Event
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>CampusConnect</h3>
+                <p>College Event Management Portal</p>
+            </div>
+            <div class="footer-contact">
+                <h4>Support</h4>
+                <p>events@campusconnect.edu</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 CampusConnect Portal</p>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        let currentEvent = null;
+        let currentUser = null;
+
+        async function loadEventDetails(clearAlerts = true) {
+            if (clearAlerts) {
+                CC.clearAllAlerts();
+            }
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventId = urlParams.get('id');
+
+            if (!eventId) {
+                CC.showAlert('errorMessage', 'No event ID specified in the URL.', 'error');
+                return;
+            }
+
+            try {
+                currentUser = await Auth.getCurrentUser();
+                const res = await fetch(`/api/events/${eventId}`);
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    CC.showAlert('errorMessage', data.message || 'Event not found.', 'error');
+                    return;
+                }
+
+                currentEvent = data.data;
+                renderEventDetails();
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Failed to load event details from server.', 'error');
+            }
+        }
+
+        function renderEventDetails() {
+            const e = currentEvent;
+            document.getElementById('eventDetailsCard').style.display = 'block';
+
+            document.getElementById('detailImage').src = e.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+            document.getElementById('detailTitle').textContent = e.title;
+            document.getElementById('detailDescription').textContent = e.description;
+
+            const catEl = document.getElementById('detailCategory');
+            catEl.textContent = e.category;
+            catEl.className = `event-badge ${CC.getCategoryBadgeClass(e.category)}`;
+
+            document.getElementById('detailDate').textContent = CC.formatDate(e.eventDate);
+            document.getElementById('detailTime').textContent = CC.formatTime(e.startTime);
+            document.getElementById('detailVenue').textContent = e.venue;
+            document.getElementById('detailOrganizer').textContent = e.organizer;
+            document.getElementById('detailCapacity').textContent = `Total Capacity: ${e.capacity} attendees`;
+
+            const seatCountEl = document.getElementById('detailSeatCount');
+            if (e.isPast) {
+                seatCountEl.textContent = 'Event Concluded';
+                seatCountEl.className = 'seats-badge seats-full';
+            } else if (e.isFull) {
+                seatCountEl.textContent = 'Full Capacity (0 seats left)';
+                seatCountEl.className = 'seats-badge seats-full';
+            } else {
+                seatCountEl.textContent = `${e.availableSeats} Available Seats`;
+                seatCountEl.className = `seats-badge ${e.availableSeats < 10 ? 'seats-low' : 'seats-available'}`;
+            }
+
+            // Update registration button state
+            const regBtn = document.getElementById('eventRegisterButton');
+            const notice = document.getElementById('registrationNotice');
+
+            if (e.isPast) {
+                regBtn.disabled = true;
+                regBtn.textContent = 'Past Event';
+                regBtn.className = 'btn btn-outline btn-lg';
+                notice.textContent = 'This event has already taken place. Registration is closed.';
+            } else if (e.userRegistered) {
+                regBtn.disabled = true;
+                regBtn.textContent = '✓ Already Registered';
+                regBtn.className = 'btn btn-outline btn-lg';
+                notice.textContent = 'You have registered for this event! View it under My Registrations.';
+            } else if (e.isFull) {
+                regBtn.disabled = true;
+                regBtn.textContent = 'Event Full';
+                regBtn.className = 'btn btn-outline btn-lg';
+                notice.textContent = 'All available seats for this event have been filled.';
+            } else if (currentUser && currentUser.role === 'ADMIN') {
+                regBtn.disabled = true;
+                regBtn.textContent = 'Admin View (Registration Disabled)';
+                regBtn.className = 'btn btn-outline btn-lg';
+                notice.textContent = 'Administrators manage events via the Admin Dashboard.';
+            } else {
+                regBtn.disabled = false;
+                regBtn.textContent = 'Register for Event';
+                regBtn.className = 'btn btn-indigo btn-lg';
+            }
+        }
+
+        async function registerForCurrentEvent() {
+            CC.clearAllAlerts();
+
+            // Client check for login
+            if (!currentUser) {
+                currentUser = await Auth.getCurrentUser();
+            }
+            if (!currentUser) {
+                window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                return;
+            }
+
+            // Client checks for full event / past event to prevent or test server validation
+            if (currentEvent.isPast) {
+                CC.showAlert('errorMessage', 'Cannot register for a past event.', 'error');
+                return;
+            }
+
+            if (currentEvent.isFull) {
+                CC.showAlert('errorMessage', 'This event has reached full capacity. No seats available.', 'error');
+                return;
+            }
+
+            const regBtn = document.getElementById('eventRegisterButton');
+            regBtn.disabled = true;
+            regBtn.textContent = 'Registering...';
+
+            try {
+                const res = await fetch(`/api/registrations/event/${currentEvent.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    await loadEventDetails(false);
+                    CC.showAlert('successMessage', 'Congratulations! You have successfully registered for ' + currentEvent.title + '.', 'success');
+                } else {
+                    CC.showAlert('errorMessage', data.message || 'Registration failed.', 'error');
+                    regBtn.disabled = false;
+                    regBtn.textContent = 'Register for Event';
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'A network error occurred while submitting registration.', 'error');
+                regBtn.disabled = false;
+                regBtn.textContent = 'Register for Event';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadEventDetails();
+        });
+    </script>
+</body>
+</html>

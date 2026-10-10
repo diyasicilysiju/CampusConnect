@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Registration - CampusConnect</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="brand-logo">
+                <div class="brand-icon">🎓</div>
+                <span>CampusConnect</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/index.html" class="nav-link">Home</a></li>
+                <li><a href="/events.html" class="nav-link">Browse Events</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="/login.html" class="btn btn-outline btn-sm">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Registration Form Card -->
+    <main class="container">
+        <div class="auth-wrapper" style="max-width: 500px;">
+            <div class="auth-header">
+                <h1>Student Registration</h1>
+                <p>Create your university account to RSVP for campus events</p>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="validationMessage" class="alert alert-warning"></div>
+            <div id="errorMessage" class="alert alert-error"></div>
+            <div id="successMessage" class="alert alert-success"></div>
+
+            <form id="registerForm" novalidate onsubmit="event.preventDefault(); handleRegister(event); return false;">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" name="fullName" class="form-control" placeholder="e.g. Michael Scott" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentId">Student ID</label>
+                    <input type="text" id="studentId" name="studentId" class="form-control" placeholder="e.g. STU-2026-101" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">University Email</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="e.g. michael@campusconnect.edu" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password (Minimum 6 characters)</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Create a secure password" required autocomplete="new-password">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" placeholder="Re-enter your password" required autocomplete="new-password">
+                </div>
+
+                <button type="button" id="registerButton" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="handleRegister(event)">
+                    Register Account
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.5rem; font-size: 0.92rem; color: var(--text-muted);">
+                Already have an account? <a href="/login.html" style="color: var(--primary-indigo); font-weight: 600;">Sign in here</a>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/main.js"></script>
+    <script>
+        async function handleRegister(e) {
+            e.preventDefault();
+            CC.clearAllAlerts();
+
+            const fullName = document.getElementById('fullName').value.trim();
+            const studentId = document.getElementById('studentId').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // Scenario 2: Validation of empty required fields
+            if (!fullName || !studentId || !email || !password || !confirmPassword) {
+                CC.showAlert('validationMessage', 'All fields are required. Please fill in the missing information.', 'warning');
+                return false;
+            }
+
+            // Scenario 3: Validation of invalid email
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(email)) {
+                CC.showAlert('validationMessage', 'Please enter a valid email address.', 'warning');
+                return false;
+            }
+
+            // Scenario 4: Validation of mismatched passwords
+            if (password !== confirmPassword) {
+                CC.showAlert('validationMessage', 'Passwords do not match. Please verify both password entries.', 'warning');
+                return false;
+            }
+
+            if (password.length < 6) {
+                CC.showAlert('validationMessage', 'Password must be at least 6 characters long.', 'warning');
+                return false;
+            }
+
+            const btn = document.getElementById('registerButton');
+            btn.disabled = true;
+            btn.textContent = 'Registering...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullName, studentId, email, password, confirmPassword })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    CC.showAlert('successMessage', 'Registration successful! You can now log in with your credentials.', 'success');
+                    document.getElementById('registerForm').reset();
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 1500);
+                } else {
+                    // Scenario 5: Duplicate email or other server error
+                    CC.showAlert('errorMessage', data.message || 'Registration failed. Please check your details.', 'error');
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Network error occurred while connecting to the server.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Register Account';
+            }
+
+            return false;
+        }
+    </script>
+</body>
+</html>

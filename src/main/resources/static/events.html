@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Events - CampusConnect</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="brand-logo">
+                <div class="brand-icon">🎓</div>
+                <span>CampusConnect</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/index.html" class="nav-link">Home</a></li>
+                <li><a href="/events.html" class="nav-link active">Browse Events</a></li>
+            </ul>
+            <div class="nav-actions" id="navAuth">
+                <a href="/login.html" class="btn btn-outline btn-sm">Login</a>
+                <a href="/register.html" class="btn btn-primary btn-sm">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Header -->
+        <div style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2rem; color: var(--primary-navy); font-weight: 700;">Explore University Events</h1>
+            <p style="color: var(--text-muted); font-size: 1rem;">Browse workshops, sports tournaments, technical hackathons, and cultural fests.</p>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <section class="filter-toolbar">
+            <div class="search-input-wrapper">
+                <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search events by title...">
+            </div>
+
+            <div style="min-width: 180px;">
+                <select id="categoryFilter" class="form-control">
+                    <option value="All">All Categories</option>
+                    <option value="Technical">Technical</option>
+                    <option value="Cultural">Cultural</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Workshops">Workshops</option>
+                </select>
+            </div>
+
+            <div style="min-width: 160px;">
+                <input type="date" id="dateFilter" class="form-control" title="Filter by date">
+            </div>
+
+            <button type="button" id="resetFiltersBtn" class="btn btn-outline" onclick="resetFilters()">Reset</button>
+        </section>
+
+        <!-- Events Container -->
+        <div id="eventsContainer" class="events-grid">
+            <!-- Dynamic Event Cards -->
+        </div>
+
+        <!-- Empty State Message for Scenario 13 -->
+        <div id="emptyEventsMessage" class="empty-state" style="display: none; margin-top: 1.5rem;">
+            <div class="empty-state-icon">🔍</div>
+            <h3 class="empty-state-title">No matching events found</h3>
+            <p class="empty-state-desc">We couldn't find any events matching your search or filter criteria. Try adjusting the title keyword, category, or date.</p>
+            <button class="btn btn-outline btn-sm" onclick="resetFilters()">Clear Filters</button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>CampusConnect</h3>
+                <p>The centralized college event management and registration portal.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Links</h4>
+                <ul>
+                    <li><a href="/index.html">Home</a></li>
+                    <li><a href="/events.html">Browse Events</a></li>
+                </ul>
+            </div>
+            <div class="footer-contact">
+                <h4>Contact</h4>
+                <p>events@campusconnect.edu</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 CampusConnect Portal</p>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        let allEvents = [];
+
+        async function fetchAndRenderEvents() {
+            const searchVal = document.getElementById('searchInput').value.trim();
+            const catVal = document.getElementById('categoryFilter').value;
+            const dateVal = document.getElementById('dateFilter').value;
+
+            const params = new URLSearchParams();
+            if (searchVal) params.append('search', searchVal);
+            if (catVal && catVal !== 'All') params.append('category', catVal);
+            if (dateVal) params.append('date', dateVal);
+
+            try {
+                const res = await fetch('/api/events?' + params.toString());
+                const data = await res.json();
+                renderEvents(data.data || []);
+            } catch (err) {
+                console.error('Failed to fetch events:', err);
+            }
+        }
+
+        function renderEvents(events) {
+            const container = document.getElementById('eventsContainer');
+            const emptyMsg = document.getElementById('emptyEventsMessage');
+
+            if (!events || events.length === 0) {
+                container.innerHTML = '';
+                emptyMsg.style.display = 'block';
+                return;
+            }
+
+            emptyMsg.style.display = 'none';
+            container.innerHTML = events.map(e => {
+                let seatClass = e.isFull ? 'seats-full' : (e.availableSeats < 10 ? 'seats-low' : 'seats-available');
+                let seatText = e.isPast ? 'Event Finished' : (e.isFull ? 'Full Capacity (0 seats left)' : `${e.availableSeats} seats available`);
+
+                let actionBtn = '';
+                if (e.isPast) {
+                    actionBtn = `<span class="badge" style="background:#e2e8f0; color:#64748b; padding:0.4rem 0.75rem; border-radius:6px; font-size:0.85rem;">Past Event</span>`;
+                } else if (e.userRegistered) {
+                    actionBtn = `<span class="badge" style="background:#dcfce7; color:#15803d; padding:0.4rem 0.75rem; border-radius:6px; font-weight:600; font-size:0.85rem;">✓ Registered</span>`;
+                } else if (e.isFull) {
+                    actionBtn = `<span class="badge" style="background:#fee2e2; color:#b91c1c; padding:0.4rem 0.75rem; border-radius:6px; font-weight:600; font-size:0.85rem;">Full</span>`;
+                } else {
+                    actionBtn = `<a href="/event-details.html?id=${e.id}" class="btn btn-indigo btn-sm" id="eventRegisterButton">Register</a>`;
+                }
+
+                return `
+                    <div class="event-card" data-event-id="${e.id}">
+                        <img src="${e.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600'}" alt="${e.title}" class="event-card-img">
+                        <div class="event-card-body">
+                            <span class="event-badge ${CC.getCategoryBadgeClass(e.category)}">${e.category}</span>
+                            <h3 class="event-title">${e.title}</h3>
+                            <p class="event-desc">${e.description}</p>
+                            <div class="event-meta">
+                                <div class="meta-row">📅 <span>${CC.formatDate(e.eventDate)} at ${CC.formatTime(e.startTime)}</span></div>
+                                <div class="meta-row">📍 <span>${e.venue}</span></div>
+                                <div class="meta-row">👤 <span>Organized by: ${e.organizer}</span></div>
+                            </div>
+                        </div>
+                        <div class="event-card-footer">
+                            <span class="seats-badge ${seatClass}">${seatText}</span>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <a href="/event-details.html?id=${e.id}" class="btn btn-outline btn-sm" id="eventDetailsButton">Details</a>
+                                ${actionBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('categoryFilter').value = 'All';
+            document.getElementById('dateFilter').value = '';
+            fetchAndRenderEvents();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialCategory = urlParams.get('category');
+            if (initialCategory) {
+                document.getElementById('categoryFilter').value = initialCategory;
+            }
+
+            fetchAndRenderEvents();
+
+            document.getElementById('searchInput').addEventListener('input', fetchAndRenderEvents);
+            document.getElementById('categoryFilter').addEventListener('change', fetchAndRenderEvents);
+            document.getElementById('dateFilter').addEventListener('change', fetchAndRenderEvents);
+        });
+    </script>
+</body>
+</html>

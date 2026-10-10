@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Registrations - CampusConnect</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/index.html" class="brand-logo">
+                <div class="brand-icon">🎓</div>
+                <span>CampusConnect</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/index.html" class="nav-link">Home</a></li>
+                <li><a href="/events.html" class="nav-link">Browse Events</a></li>
+                <li><a href="/my-registrations.html" class="nav-link active">My Registrations</a></li>
+            </ul>
+            <div class="nav-actions" id="navAuth">
+                <!-- Injected via auth.js -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2rem; color: var(--primary-navy); font-weight: 700;">My Event Registrations</h1>
+            <p style="color: var(--text-muted); font-size: 1rem;">View and manage your registered university sessions and tickets.</p>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="successMessage" class="alert alert-success"></div>
+        <div id="errorMessage" class="alert alert-error"></div>
+
+        <!-- Registrations Table Container -->
+        <div id="registrationsTableWrapper" class="table-container" style="display: none;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Event Title</th>
+                        <th>Category</th>
+                        <th>Date & Time</th>
+                        <th>Venue</th>
+                        <th>Registered On</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="registrationsTableBody">
+                    <!-- Dynamic rows -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State Message -->
+        <div id="emptyEventsMessage" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">🎟️</div>
+            <h3 class="empty-state-title">No Registrations Found</h3>
+            <p class="empty-state-desc">You haven't registered for any events yet. Explore upcoming campus events and reserve your spot!</p>
+            <a href="/events.html" class="btn btn-indigo btn-sm">Explore Events</a>
+        </div>
+    </main>
+
+    <!-- Cancellation Confirmation Modal -->
+    <div id="cancelModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--primary-navy);">Confirm Cancellation</h3>
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeCancelModal()" style="border: none; font-size: 1.2rem;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-main); font-size: 1rem; margin-bottom: 0.5rem;">
+                    Are you sure you want to cancel your registration for:
+                </p>
+                <p id="cancelEventTitle" style="font-weight: 700; color: var(--primary-indigo); font-size: 1.1rem;"></p>
+                <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.75rem;">
+                    Once cancelled, your reserved seat will immediately be released to other students.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="abortCancelButton" onclick="closeCancelModal()">Keep Registration</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelButton" onclick="executeCancellation()">Yes, Cancel Registration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>CampusConnect</h3>
+                <p>College Event Management Portal</p>
+            </div>
+            <div class="footer-contact">
+                <h4>Contact</h4>
+                <p>events@campusconnect.edu</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 CampusConnect Portal</p>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        let currentRegistrations = [];
+        let pendingCancelId = null;
+
+        async function loadMyRegistrations(clearAlerts = true) {
+            if (clearAlerts) {
+                CC.clearAllAlerts();
+            }
+            const user = await Auth.requireAuth('STUDENT');
+            if (!user) return;
+
+            try {
+                const res = await fetch('/api/registrations/my');
+                const data = await res.json();
+
+                if (!res.ok) {
+                    CC.showAlert('errorMessage', data.message || 'Failed to fetch registrations.', 'error');
+                    return;
+                }
+
+                currentRegistrations = data.data || [];
+                renderRegistrations();
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Failed to communicate with server.', 'error');
+            }
+        }
+
+        function renderRegistrations() {
+            const tableWrapper = document.getElementById('registrationsTableWrapper');
+            const tbody = document.getElementById('registrationsTableBody');
+            const emptyMsg = document.getElementById('emptyEventsMessage');
+
+            if (!currentRegistrations || currentRegistrations.length === 0) {
+                tableWrapper.style.display = 'none';
+                emptyMsg.style.display = 'block';
+                return;
+            }
+
+            emptyMsg.style.display = 'none';
+            tableWrapper.style.display = 'block';
+
+            tbody.innerHTML = currentRegistrations.map((reg, idx) => {
+                const isCancelled = reg.status === 'CANCELLED';
+                const statusBadge = isCancelled
+                    ? `<span id="registrationStatus" class="badge" style="background:#fef2f2; color:#b91c1c; padding:0.3rem 0.65rem; border-radius:9999px; font-weight:600; font-size:0.8rem;">CANCELLED</span>`
+                    : `<span id="registrationStatus" class="badge" style="background:#ecfdf5; color:#15803d; padding:0.3rem 0.65rem; border-radius:9999px; font-weight:600; font-size:0.8rem;">REGISTERED</span>`;
+
+                let actionButton = '';
+                if (reg.canCancel) {
+                    actionButton = `
+                        <button type="button" class="btn btn-outline btn-sm btn-danger-hover" id="cancelRegistrationButton" data-reg-id="${reg.id}" onclick="openCancelModal(${reg.id}, '${reg.eventTitle.replace(/'/g, "\\'")}')">
+                            Cancel
+                        </button>
+                    `;
+                } else {
+                    actionButton = `<span style="color:var(--text-light); font-size:0.85rem;">${isCancelled ? 'Cancelled' : 'Completed'}</span>`;
+                }
+
+                return `
+                    <tr data-registration-id="${reg.id}">
+                        <td>
+                            <a href="/event-details.html?id=${reg.eventId}" style="font-weight:600; color:var(--primary-navy); text-decoration:none;">
+                                ${reg.eventTitle}
+                            </a>
+                        </td>
+                        <td><span class="event-badge ${CC.getCategoryBadgeClass(reg.eventCategory)}">${reg.eventCategory}</span></td>
+                        <td>${CC.formatDate(reg.eventDate)}<br><small style="color:var(--text-muted);">${CC.formatTime(reg.eventStartTime)}</small></td>
+                        <td>${reg.eventVenue}</td>
+                        <td style="font-size:0.85rem; color:var(--text-muted);">${reg.registrationDate}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actionButton}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openCancelModal(regId, title) {
+            pendingCancelId = regId;
+            document.getElementById('cancelEventTitle').textContent = title;
+            document.getElementById('cancelModal').classList.add('active');
+        }
+
+        function closeCancelModal() {
+            pendingCancelId = null;
+            document.getElementById('cancelModal').classList.remove('active');
+        }
+
+        async function executeCancellation() {
+            if (!pendingCancelId) return;
+
+            const regId = pendingCancelId;
+            closeCancelModal();
+            CC.clearAllAlerts();
+
+            try {
+                const res = await fetch(`/api/registrations/${regId}/cancel`, {
+                    method: 'PUT'
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    await loadMyRegistrations(false);
+                    CC.showAlert('successMessage', 'Registration for ' + data.data.eventTitle + ' was successfully cancelled.', 'success');
+                } else {
+                    CC.showAlert('errorMessage', data.message || 'Failed to cancel registration.', 'error');
+                }
+            } catch (err) {
+                CC.showAlert('errorMessage', 'Network error while attempting cancellation.', 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMyRegistrations();
+        });
+    </script>
+</body>
+</html>
