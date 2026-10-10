@@ -19,6 +19,7 @@ const Auth = {
         }
     },
 
+    
     async updateNavbar() {
         const user = await this.getCurrentUser();
         const navAuth = document.getElementById('navAuth');
@@ -26,6 +27,7 @@ const Auth = {
 
         if (!navAuth) return;
 
+<<<<<<< HEAD
         // Remove existing role-specific links to prevent duplicates.
         if (navLinks) {
             navLinks.querySelectorAll(
@@ -40,6 +42,18 @@ const Auth = {
         if (user) {
             const roleBadge =
                 user.role === 'ADMIN' ? 'Admin' : 'Student';
+=======
+        // Remove role-specific links already present in the HTML
+        // or previously inserted by JavaScript.
+        if (navLinks) {
+            navLinks.querySelectorAll(
+                'a[href="/admin-dashboard.html"], a[href="/my-registrations.html"]'
+            ).forEach(link => link.closest('li')?.remove());
+        }
+
+        if (user) {
+            const roleBadge = user.role === 'ADMIN' ? 'Admin' : 'Student';
+>>>>>>> a0a434b (Update Selenium tests and event page selectors)
 
             const specificLink = user.role === 'ADMIN'
                 ? `<li><a class="nav-link" id="adminDashboardLink"
@@ -67,6 +81,7 @@ const Auth = {
             `;
         }
     },
+
 
     async logout() {
         try {

@@ -125,7 +125,6 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
     // -------------------------------------------------------------
     @Test(priority = 7)
     public void test07_Login_IncorrectPassword() {
-        logout();
         driver.get(baseUrl + "/login.html");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email")));
 
@@ -236,7 +235,8 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
         driver.get(baseUrl + "/events.html");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("event-card")));
 
-        WebElement detailsBtn = driver.findElement(By.id("eventDetailsButton"));
+        WebElement eventCard = driver.findElement(By.cssSelector(".event-card"));
+        WebElement detailsBtn = eventCard.findElement(By.cssSelector(".eventDetailsButton"));
         detailsBtn.click();
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("detailTitle")));
@@ -255,10 +255,12 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
         // Navigate to events, find AI workshop
         driver.get(baseUrl + "/events.html");
         WebElement searchInput = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("searchInput")));
+        searchInput.clear();
         searchInput.sendKeys("AI and Machine Learning");
 
         wait.until(d -> d.findElements(By.className("event-card")).size() == 1);
-        driver.findElement(By.id("eventRegisterButton")).click();
+        WebElement eventCard = driver.findElement(By.cssSelector(".event-card"));
+        eventCard.findElement(By.cssSelector(".eventDetailsButton")).click();
 
         wait.until(ExpectedConditions.urlContains("event-details.html"));
         WebElement regBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("eventRegisterButton")));
@@ -281,7 +283,8 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
         searchInput.clear();
         searchInput.sendKeys("CodeFest");
         wait.until(d -> d.findElements(By.className("event-card")).size() == 1);
-        driver.findElement(By.id("eventDetailsButton")).click();
+        WebElement eventCard = driver.findElement(By.cssSelector(".event-card"));
+        eventCard.findElement(By.cssSelector(".eventDetailsButton")).click();
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("eventRegisterButton")));
         WebElement regBtn = driver.findElement(By.id("eventRegisterButton"));
@@ -304,7 +307,8 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
         searchInput.sendKeys("Photography");
 
         wait.until(ExpectedConditions.textToBePresentInElementLocated(By.className("event-title"), "Photography"));
-        driver.findElement(By.id("eventDetailsButton")).click();
+        WebElement eventCard = driver.findElement(By.cssSelector(".event-card"));
+        eventCard.findElement(By.cssSelector(".eventDetailsButton")).click();
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("eventRegisterButton")));
         WebElement regBtn = driver.findElement(By.id("eventRegisterButton"));
@@ -324,7 +328,8 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
         searchInput.sendKeys("Campus Orientation");
 
         wait.until(ExpectedConditions.textToBePresentInElementLocated(By.className("event-title"), "Campus Orientation"));
-        driver.findElement(By.id("eventDetailsButton")).click();
+        WebElement eventCard = driver.findElement(By.cssSelector(".event-card"));
+        eventCard.findElement(By.cssSelector(".eventDetailsButton")).click();
 
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("eventRegisterButton")));
         WebElement regBtn = driver.findElement(By.id("eventRegisterButton"));
@@ -370,11 +375,60 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
     // -------------------------------------------------------------
     @Test(priority = 21)
     public void test21_UpdateAvailableSeatsAfterCancellation() {
-        // After John Doe cancelled a registration in test 20, verify available seats updated
+        loginAs("john.doe@campusconnect.edu", "Student@123");
+    
         driver.get(baseUrl + "/events.html");
-        wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("event-card")));
-        List<WebElement> cards = driver.findElements(By.className("event-card"));
-        Assert.assertTrue(cards.size() > 0, "Event cards rendered successfully reflecting updated seat counts");
+    
+        WebElement eventCard = wait.until(d ->
+                d.findElements(By.className("event-card"))
+                        .stream()
+                        .filter(card -> card.getText().contains("CodeFest"))
+                        .findFirst()
+                        .orElse(null));
+    
+        Assert.assertNotNull(eventCard, "CodeFest event was not found");
+    
+        int seatsBefore = readAvailableSeats(eventCard);
+    
+        driver.get(baseUrl + "/my-registrations.html");
+    
+        wait.until(ExpectedConditions.visibilityOfElementLocated(
+                By.id("registrationsTableWrapper")));
+    
+        WebElement registrationRow = driver.findElements(
+                        By.cssSelector("#registrationsTableBody tr"))
+                .stream()
+                .filter(row -> row.getText().contains("CodeFest"))
+                .findFirst()
+                .orElse(null);
+    
+        Assert.assertNotNull(registrationRow,
+                "John Doe's CodeFest registration was not found");
+    
+        registrationRow.findElement(
+                By.id("cancelRegistrationButton")).click();
+    
+        wait.until(ExpectedConditions.elementToBeClickable(
+                By.id("confirmCancelButton"))).click();
+    
+        wait.until(ExpectedConditions.visibilityOfElementLocated(
+                By.id("successMessage")));
+    
+        driver.get(baseUrl + "/events.html");
+    
+        WebElement updatedCard = wait.until(d ->
+                d.findElements(By.className("event-card"))
+                        .stream()
+                        .filter(card -> card.getText().contains("CodeFest"))
+                        .findFirst()
+                        .orElse(null));
+    
+        Assert.assertNotNull(updatedCard, "CodeFest event disappeared");
+    
+        int seatsAfter = readAvailableSeats(updatedCard);
+    
+        Assert.assertEquals(seatsAfter, seatsBefore + 1,
+                "Available seats should increase by one after cancellation");
     }
 
     // -------------------------------------------------------------
@@ -525,17 +579,35 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
     // Scenario 29: Prevent students from calling admin-only backend endpoints
     // -------------------------------------------------------------
     @Test(priority = 29)
-    public void test29_PreventStudentsFromCallingAdminBackendEndpoints() throws Exception {
-        // Direct HTTP call without Admin credentials should return 401 or 403
+    public void test29_PreventStudentsFromCallingAdminBackendEndpoints()
+            throws Exception {
+    
+        loginAs("john.doe@campusconnect.edu", "Student@123");
+    
+        String cookieHeader = driver.manage().getCookies()
+                .stream()
+                .map(cookie -> cookie.getName() + "=" + cookie.getValue())
+                .collect(java.util.stream.Collectors.joining("; "));
+    
+        Assert.assertFalse(cookieHeader.isBlank(),
+                "No session cookies found. Check the application's authentication.");
+    
         HttpClient client = HttpClient.newHttpClient();
+    
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/dashboard/stats"))
+                .header("Cookie", cookieHeader)
                 .GET()
                 .build();
-
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        Assert.assertTrue(response.statusCode() == 401 || response.statusCode() == 403,
-                "Expected HTTP 401 or 403 for unauthorized call to /api/dashboard/stats");
+    
+        HttpResponse<String> response = client.send(
+                request, HttpResponse.BodyHandlers.ofString());
+    
+        Assert.assertTrue(
+                response.statusCode() == 401
+                        || response.statusCode() == 403,
+                "A logged-in student must not access admin statistics. HTTP status: "
+                        + response.statusCode());
     }
 
     // -------------------------------------------------------------
@@ -554,5 +626,35 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
         WebElement badgeAfterRefresh = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("userBadge")));
         Assert.assertTrue(badgeAfterRefresh.getText().contains("John Doe"),
                 "Expected user session to persist after page refresh");
+        Assert.assertEquals(
+        driver.findElements(
+                By.cssSelector("a[href='/my-registrations.html']")).size(),
+        1,
+        "My Registrations must appear exactly once");
+
+        Assert.assertEquals(
+        driver.findElements(
+                By.cssSelector("a[href='/admin-dashboard.html']")).size(),
+        0,
+        "A student must not see Admin Dashboard");
+    }
+    private int readAvailableSeats(WebElement eventCard) {
+        java.util.regex.Pattern pattern =
+                java.util.regex.Pattern.compile(
+                        "(?i)(?:available\\s+seats|seats\\s+available|available)"
+                        + "\\s*:?\\s*(\\d+)|(\\d+)\\s+seats\\s+available");
+    
+        java.util.regex.Matcher matcher =
+                pattern.matcher(eventCard.getText());
+    
+        Assert.assertTrue(matcher.find(),
+                "Could not find available-seat count in event card: "
+                        + eventCard.getText());
+    
+        String count = matcher.group(1) != null
+                ? matcher.group(1)
+                : matcher.group(2);
+    
+        return Integer.parseInt(count);
     }
 }

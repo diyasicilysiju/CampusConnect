@@ -140,7 +140,9 @@
                             <span class="seats-badge ${e.isFull ? 'seats-full' : (e.availableSeats < 10 ? 'seats-low' : 'seats-available')}">
                                 ${e.isFull ? 'Sold Out (0 seats)' : `${e.availableSeats} seats remaining`}
                             </span>
-                            <a href="/event-details.html?id=${e.id}" class="btn btn-indigo btn-sm" id="eventDetailsButton">View Details</a>
+                            
+                            <a href="/event-details.html?id=${e.id}" class="btn btn-indigo btn-sm eventDetailsButton">View Details</a>
+
                         </div>
                     </div>
                 `).join('');

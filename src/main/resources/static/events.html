@@ -142,7 +142,7 @@
                 } else if (e.isFull) {
                     actionBtn = `<span class="badge" style="background:#fee2e2; color:#b91c1c; padding:0.4rem 0.75rem; border-radius:6px; font-weight:600; font-size:0.85rem;">Full</span>`;
                 } else {
-                    actionBtn = `<a href="/event-details.html?id=${e.id}" class="btn btn-indigo btn-sm" id="eventRegisterButton">Register</a>`;
+                    actionBtn = `<a href="/event-details.html?id=${e.id}" class="btn btn-indigo btn-sm eventRegisterButton">Register</a>`;
                 }
 
                 return `
@@ -161,7 +161,7 @@
                         <div class="event-card-footer">
                             <span class="seats-badge ${seatClass}">${seatText}</span>
                             <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <a href="/event-details.html?id=${e.id}" class="btn btn-outline btn-sm" id="eventDetailsButton">Details</a>
+                                <a href="/event-details.html?id=${e.id}" class="btn btn-outline btn-sm eventDetailsButton">Details</a>
                                 ${actionBtn}
                             </div>
                         </div>
