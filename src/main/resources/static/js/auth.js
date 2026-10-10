@@ -16,6 +16,25 @@ const Auth = {
         }
     },
 
+    /**
+ * CampusConnect - Authentication & Navigation Script
+ */
+
+const Auth = {
+    async getCurrentUser() {
+        try {
+            const res = await fetch('/api/auth/me', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.data || null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    
     async updateNavbar() {
         const user = await this.getCurrentUser();
         const navAuth = document.getElementById('navAuth');
@@ -23,30 +42,74 @@ const Auth = {
 
         if (!navAuth) return;
 
+        // Remove role-specific links already present in the HTML
+        // or previously inserted by JavaScript.
+        if (navLinks) {
+            navLinks.querySelectorAll(
+                'a[href="/admin-dashboard.html"], a[href="/my-registrations.html"]'
+            ).forEach(link => link.closest('li')?.remove());
+        }
+
         if (user) {
-            let roleBadge = user.role === 'ADMIN' ? 'Admin' : 'Student';
-            let specificLink = user.role === 'ADMIN'
-                ? `<li class="nav-item"><a class="nav-link" id="adminDashboardLink" href="/admin-dashboard.html">Admin Dashboard</a></li>`
-                : `<li class="nav-item"><a class="nav-link" id="myRegistrationsLink" href="/my-registrations.html">My Registrations</a></li>`;
+            const roleBadge = user.role === 'ADMIN' ? 'Admin' : 'Student';
+
+            const specificLink = user.role === 'ADMIN'
+                ? `<li><a class="nav-link" id="adminDashboardLink"
+                    href="/admin-dashboard.html">Admin Dashboard</a></li>`
+                : `<li><a class="nav-link" id="myRegistrationsLink"
+                    href="/my-registrations.html">My Registrations</a></li>`;
 
             if (navLinks) {
-                // Remove existing dynamic links if any
-                const existingSpecific = document.getElementById('adminDashboardLink') || document.getElementById('myRegistrationsLink');
-                if (existingSpecific) existingSpecific.parentElement.remove();
                 navLinks.insertAdjacentHTML('beforeend', specificLink);
             }
 
             navAuth.innerHTML = `
-                <span class="user-badge" id="userBadge">${user.fullName} (${roleBadge})</span>
-                <button class="btn btn-outline btn-sm" id="logoutButton" onclick="Auth.logout()">Logout</button>
+                <span class="user-badge" id="userBadge">
+                    ${user.fullName} (${roleBadge})
+                </span>
+                <button class="btn btn-outline btn-sm" id="logoutButton"
+                    onclick="Auth.logout()">Logout</button>
             `;
         } else {
             navAuth.innerHTML = `
-                <a class="btn btn-outline btn-sm" id="navLoginBtn" href="/login.html">Login</a>
-                <a class="btn btn-primary btn-sm" id="navRegisterBtn" href="/register.html">Register</a>
+                <a class="btn btn-outline btn-sm" id="navLoginBtn"
+                    href="/login.html">Login</a>
+                <a class="btn btn-primary btn-sm" id="navRegisterBtn"
+                    href="/register.html">Register</a>
             `;
         }
     },
+
+
+    async logout() {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+            console.error(e);
+        }
+        window.location.href = '/login.html';
+    },
+
+    async requireAuth(requiredRole = null) {
+        const user = await this.getCurrentUser();
+        if (!user) {
+            window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            return null;
+        }
+        if (requiredRole && user.role !== requiredRole) {
+            // Role forbidden
+            alert('Access denied: You do not have permission to view this page.');
+            window.location.href = user.role === 'ADMIN' ? '/admin-dashboard.html' : '/events.html';
+            return null;
+        }
+        return user;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    Auth.updateNavbar();
+});
+
 
     async logout() {
         try {
