@@ -1,4 +1,3 @@
-
 /**
  * CampusConnect - Authentication & Navigation Script
  */
@@ -19,7 +18,6 @@ const Auth = {
         }
     },
 
-    
     async updateNavbar() {
         const user = await this.getCurrentUser();
         const navAuth = document.getElementById('navAuth');
@@ -27,33 +25,24 @@ const Auth = {
 
         if (!navAuth) return;
 
-<<<<<<< HEAD
         // Remove existing role-specific links to prevent duplicates.
         if (navLinks) {
             navLinks.querySelectorAll(
                 'a[href="/admin-dashboard.html"], a[href="/my-registrations.html"]'
             ).forEach(link => {
                 const item = link.closest('li');
-                if (item) item.remove();
-                else link.remove();
+
+                if (item) {
+                    item.remove();
+                } else {
+                    link.remove();
+                }
             });
         }
 
         if (user) {
             const roleBadge =
                 user.role === 'ADMIN' ? 'Admin' : 'Student';
-=======
-        // Remove role-specific links already present in the HTML
-        // or previously inserted by JavaScript.
-        if (navLinks) {
-            navLinks.querySelectorAll(
-                'a[href="/admin-dashboard.html"], a[href="/my-registrations.html"]'
-            ).forEach(link => link.closest('li')?.remove());
-        }
-
-        if (user) {
-            const roleBadge = user.role === 'ADMIN' ? 'Admin' : 'Student';
->>>>>>> a0a434b (Update Selenium tests and event page selectors)
 
             const specificLink = user.role === 'ADMIN'
                 ? `<li><a class="nav-link" id="adminDashboardLink"
@@ -82,7 +71,6 @@ const Auth = {
         }
     },
 
-
     async logout() {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
@@ -107,7 +95,9 @@ const Auth = {
         }
 
         if (requiredRole && user.role !== requiredRole) {
-            alert('Access denied: You do not have permission to view this page.');
+            alert(
+                'Access denied: You do not have permission to view this page.'
+            );
 
             window.location.href =
                 user.role === 'ADMIN'

@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,8 +8,6 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-
-    <!-- Navigation Bar -->
     <nav class="navbar">
         <div class="nav-container">
             <a href="/index.html" class="brand-logo">
@@ -26,18 +25,20 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="container">
-        <!-- Header -->
         <div style="margin-bottom: 2rem;">
-            <h1 style="font-size: 2rem; color: var(--primary-navy); font-weight: 700;">Explore University Events</h1>
-            <p style="color: var(--text-muted); font-size: 1rem;">Browse workshops, sports tournaments, technical hackathons, and cultural fests.</p>
+            <h1 style="font-size: 2rem; color: var(--primary-navy); font-weight: 700;">
+                Explore University Events
+            </h1>
+            <p style="color: var(--text-muted); font-size: 1rem;">
+                Browse workshops, sports tournaments, technical hackathons, and cultural fests.
+            </p>
         </div>
 
-        <!-- Filter & Search Toolbar -->
         <section class="filter-toolbar">
             <div class="search-input-wrapper">
-                <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search events by title...">
+                <input type="text" id="searchInput" class="form-control"
+                       placeholder="🔍 Search events by title...">
             </div>
 
             <div style="min-width: 180px;">
@@ -51,27 +52,30 @@
             </div>
 
             <div style="min-width: 160px;">
-                <input type="date" id="dateFilter" class="form-control" title="Filter by date">
+                <input type="date" id="dateFilter" class="form-control"
+                       title="Filter by date">
             </div>
 
-            <button type="button" id="resetFiltersBtn" class="btn btn-outline" onclick="resetFilters()">Reset</button>
+            <button type="button" id="resetFiltersBtn"
+                    class="btn btn-outline" onclick="resetFilters()">Reset</button>
         </section>
 
-        <!-- Events Container -->
-        <div id="eventsContainer" class="events-grid">
-            <!-- Dynamic Event Cards -->
-        </div>
+        <div id="eventsContainer" class="events-grid"></div>
 
-        <!-- Empty State Message for Scenario 13 -->
-        <div id="emptyEventsMessage" class="empty-state" style="display: none; margin-top: 1.5rem;">
+        <div id="emptyEventsMessage" class="empty-state"
+             style="display: none; margin-top: 1.5rem;">
             <div class="empty-state-icon">🔍</div>
             <h3 class="empty-state-title">No matching events found</h3>
-            <p class="empty-state-desc">We couldn't find any events matching your search or filter criteria. Try adjusting the title keyword, category, or date.</p>
-            <button class="btn btn-outline btn-sm" onclick="resetFilters()">Clear Filters</button>
+            <p class="empty-state-desc">
+                We couldn't find any events matching your search or filter criteria.
+                Try adjusting the title keyword, category, or date.
+            </p>
+            <button class="btn btn-outline btn-sm" onclick="resetFilters()">
+                Clear Filters
+            </button>
         </div>
     </main>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-brand">
@@ -99,23 +103,65 @@
     <script src="/js/auth.js"></script>
     <script>
         let allEvents = [];
+        let currentEventsRequest = null;
 
         async function fetchAndRenderEvents() {
-            const searchVal = document.getElementById('searchInput').value.trim();
-            const catVal = document.getElementById('categoryFilter').value;
-            const dateVal = document.getElementById('dateFilter').value;
+            const searchInput = document.getElementById('searchInput');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const dateFilter = document.getElementById('dateFilter');
 
             const params = new URLSearchParams();
+            const searchVal = searchInput.value.trim();
+            const catVal = categoryFilter.value;
+            const dateVal = dateFilter.value;
+
             if (searchVal) params.append('search', searchVal);
-            if (catVal && catVal !== 'All') params.append('category', catVal);
+            if (catVal && catVal !== 'All') {
+                params.append('category', catVal);
+            }
             if (dateVal) params.append('date', dateVal);
 
+            if (currentEventsRequest) {
+                currentEventsRequest.abort();
+            }
+
+            const controller = new AbortController();
+            currentEventsRequest = controller;
+
             try {
-                const res = await fetch('/api/events?' + params.toString());
+                const res = await fetch(
+                    '/api/events?' + params.toString(),
+                    { signal: controller.signal }
+                );
+
+                if (!res.ok) {
+                    throw new Error('Failed to fetch events. HTTP ' + res.status);
+                }
+
                 const data = await res.json();
-                renderEvents(data.data || []);
+
+                // Ignore results from a request that is no longer current.
+                if (currentEventsRequest !== controller) return;
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Event search failed.');
+                }
+
+                allEvents = Array.isArray(data.data) ? data.data : [];
+                renderEvents(allEvents);
             } catch (err) {
+                if (err.name === 'AbortError') return;
+
                 console.error('Failed to fetch events:', err);
+
+                if (currentEventsRequest === controller) {
+                    document.getElementById('eventsContainer').innerHTML = '';
+                    document.getElementById('emptyEventsMessage').style.display = 'block';
+                }
+            } finally {
+                if (currentEventsRequest === controller) {
+                    currentEventsRequest = null;
+                }
             }
         }
 
@@ -130,11 +176,20 @@
             }
 
             emptyMsg.style.display = 'none';
+
             container.innerHTML = events.map(e => {
-                let seatClass = e.isFull ? 'seats-full' : (e.availableSeats < 10 ? 'seats-low' : 'seats-available');
-                let seatText = e.isPast ? 'Event Finished' : (e.isFull ? 'Full Capacity (0 seats left)' : `${e.availableSeats} seats available`);
+                const seatClass = e.isFull
+                    ? 'seats-full'
+                    : (e.availableSeats < 10 ? 'seats-low' : 'seats-available');
+
+                const seatText = e.isPast
+                    ? 'Event Finished'
+                    : (e.isFull
+                        ? 'Full Capacity (0 seats left)'
+                        : `${e.availableSeats} seats available`);
 
                 let actionBtn = '';
+
                 if (e.isPast) {
                     actionBtn = `<span class="badge" style="background:#e2e8f0; color:#64748b; padding:0.4rem 0.75rem; border-radius:6px; font-size:0.85rem;">Past Event</span>`;
                 } else if (e.userRegistered) {
@@ -147,7 +202,8 @@
 
                 return `
                     <div class="event-card" data-event-id="${e.id}">
-                        <img src="${e.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600'}" alt="${e.title}" class="event-card-img">
+                        <img src="${e.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600'}"
+                             alt="${e.title}" class="event-card-img">
                         <div class="event-card-body">
                             <span class="event-badge ${CC.getCategoryBadgeClass(e.category)}">${e.category}</span>
                             <h3 class="event-title">${e.title}</h3>
@@ -161,7 +217,8 @@
                         <div class="event-card-footer">
                             <span class="seats-badge ${seatClass}">${seatText}</span>
                             <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <a href="/event-details.html?id=${e.id}" class="btn btn-outline btn-sm eventDetailsButton">Details</a>
+                                <a href="/event-details.html?id=${e.id}"
+                                   class="btn btn-outline btn-sm eventDetailsButton">Details</a>
                                 ${actionBtn}
                             </div>
                         </div>
@@ -180,16 +237,23 @@
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const initialCategory = urlParams.get('category');
+
             if (initialCategory) {
                 document.getElementById('categoryFilter').value = initialCategory;
             }
 
-            fetchAndRenderEvents();
+            document.getElementById('searchInput')
+                .addEventListener('input', fetchAndRenderEvents);
 
-            document.getElementById('searchInput').addEventListener('input', fetchAndRenderEvents);
-            document.getElementById('categoryFilter').addEventListener('change', fetchAndRenderEvents);
-            document.getElementById('dateFilter').addEventListener('change', fetchAndRenderEvents);
+            document.getElementById('categoryFilter')
+                .addEventListener('change', fetchAndRenderEvents);
+
+            document.getElementById('dateFilter')
+                .addEventListener('change', fetchAndRenderEvents);
+
+            fetchAndRenderEvents();
         });
     </script>
 </body>
 </html>
+```
