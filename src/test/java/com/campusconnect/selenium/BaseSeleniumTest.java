@@ -34,8 +34,10 @@ public class BaseSeleniumTest {
 
         ChromeOptions options = new ChromeOptions();
 
+        // Chrome opens visibly by default.
+        // Headless mode can still be enabled using -Dheadless=true.
         if (Boolean.parseBoolean(
-                System.getProperty("headless", "true"))) {
+                System.getProperty("headless", "false"))) {
             options.addArguments("--headless=new");
         }
 
@@ -61,7 +63,7 @@ public class BaseSeleniumTest {
     public void resetStateBeforeEachTest() {
         resetDatabase();
 
-        // Open a page on the application's domain before clearing storage.
+        // Clear cookies and browser storage before each test.
         driver.manage().deleteAllCookies();
         driver.get(baseUrl + "/login.html");
 

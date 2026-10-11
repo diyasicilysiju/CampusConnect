@@ -198,19 +198,30 @@ public class CampusConnectSeleniumTests extends BaseSeleniumTest {
     // -------------------------------------------------------------
     @Test(priority = 12)
     public void test12_FilterEventsByCategory() {
-        driver.get(baseUrl + "/events.html");
-        WebElement categoryFilter = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("categoryFilter")));
+    driver.get(baseUrl + "/events.html");
+    WebElement categoryFilter = wait.until(
+            ExpectedConditions.visibilityOfElementLocated(
+                    By.id("categoryFilter")));
 
-        Select select = new Select(categoryFilter);
-        select.selectByVisibleText("Sports");
+    Select select = new Select(categoryFilter);
+    select.selectByVisibleText("Sports");
 
-        wait.until(d -> {
-            List<WebElement> cards = d.findElements(By.className("event-card"));
-            return !cards.isEmpty() && cards.stream().allMatch(c -> c.getText().contains("Sports"));
-        });
-        List<WebElement> cards = driver.findElements(By.className("event-card"));
-        Assert.assertTrue(cards.size() >= 1, "Expected at least 1 sports event card");
-    }
+    wait.until(d -> {
+        List<WebElement> cards =
+                d.findElements(By.className("event-card"));
+
+        return !cards.isEmpty()
+                && cards.stream().allMatch(
+                        c -> c.getText().contains("Sports"));
+    });
+
+    List<WebElement> cards =
+            driver.findElements(By.className("event-card"));
+
+    Assert.assertTrue(cards.size() >= 1,
+            "Expected at least 1 sports event card");
+}
+    
 
     // -------------------------------------------------------------
     // Scenario 13: Search with no matching results
